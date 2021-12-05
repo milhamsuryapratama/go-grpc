@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"go-grpc-udemy/greet/greetpb"
 	"google.golang.org/grpc"
+	"io"
 	"log"
 )
 
-func main()  {
+func main() {
 	fmt.Println("Hello I'm a client")
 
 	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
@@ -19,16 +20,16 @@ func main()  {
 	c := greetpb.NewGreetServiceClient(conn)
 	fmt.Println(c)
 
-	doUnary(c)
+	doStream(c)
 
 	defer conn.Close()
 }
 
-func doUnary(c greetpb.GreetServiceClient)  {
+func doUnary(c greetpb.GreetServiceClient) {
 	req := &greetpb.GreetRequest{
 		Greeting: &greetpb.Greeting{
 			FirstName: "Ilham",
-			LastName: "Surya",
+			LastName:  "Surya",
 		},
 	}
 
@@ -38,4 +39,31 @@ func doUnary(c greetpb.GreetServiceClient)  {
 	}
 
 	log.Printf("response %v", response)
+}
+
+func doStream(c greetpb.GreetServiceClient) {
+	req := &greetpb.GreetManyTimesRequest{
+		Greeting: &greetpb.Greeting{
+			FirstName: "Ilham",
+			LastName:  "Surya",
+		},
+	}
+
+	response, err := c.GreetManyTimes(context.Background(), req)
+	if err != nil {
+		log.Fatalf("error while calling Greet %v", err)
+	}
+
+	for {
+		msg, err := response.Recv()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Fatalf("error while stream %v", err)
+		}
+
+		log.Printf("response %v", msg.GetResult())
+	}
 }
