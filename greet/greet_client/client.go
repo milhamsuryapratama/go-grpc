@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"io"
 	"log"
+	"time"
 )
 
 func main() {
@@ -20,7 +21,8 @@ func main() {
 	c := greetpb.NewGreetServiceClient(conn)
 	fmt.Println(c)
 
-	doStream(c)
+	//doStream(c)
+	doClientStreaming(c)
 
 	defer conn.Close()
 }
@@ -66,4 +68,37 @@ func doStream(c greetpb.GreetServiceClient) {
 
 		log.Printf("response %v", msg.GetResult())
 	}
+}
+
+func doClientStreaming(c greetpb.GreetServiceClient) {
+	request := []*greetpb.LongGreetRequest{
+		&greetpb.LongGreetRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Ilham",
+			},
+		},
+		&greetpb.LongGreetRequest{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Surya",
+			},
+		},
+	}
+
+	stream, err := c.LongGreet(context.Background())
+	if err != nil {
+		log.Fatalf("error while calling LongGreet %v", err)
+	}
+
+	for _, req := range request {
+		stream.SendMsg(req)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	response, err := stream.CloseAndRecv()
+	if err != nil {
+		log.Fatalf("error while receive LongGreet response %v", err)
+	}
+
+	fmt.Println("Hello", response)
+
 }
